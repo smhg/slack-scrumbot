@@ -31,5 +31,5 @@ $ npm stop
 
 ## Development
 ```bash
-$ DEBUG=slack-scrumbot SCRUMBOT_TOKEN=your_slack_token npm run watch
+$ DEBUG=slack-scrumbot* SCRUMBOT_TOKEN=your_slack_token npm run watch
 ```

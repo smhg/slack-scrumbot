@@ -4,21 +4,23 @@ import Slack from 'slack-client';
 import pkg from './package.json';
 import moment from 'moment';
 import Debug from 'debug';
+import Checkin from './src/checkin';
 
 let debug = Debug(pkg.name);
 
 const bracketsUser = /^<@(.+)>$/,
-  slackToken = process.env.SCRUMBOT_TOKEN;
+  slackToken = process.env.SCRUMBOT_TOKEN,
+  script = {
+    greeting: inviter => `Hi! @${inviter} wanted me to checkin with you.\n_Please provide a short (*one-line*) answer to each question._`,
+    working: 'What are you working on right now?',
+    timing: 'When do you think you will be done with this?',
+    blocking: 'Is there anything blocking your progress on this?',
+    thankyou: 'Alright. Thank you for this update!'
+  },
+  slack = new Slack(slackToken, true);
 
-let slack = new Slack(slackToken, true);
-
-let script = {
-  greeting: inviter => `Hi! @${inviter} wanted me to checkin with you.\n_Please provide a short (*one-line*) answer to each question._`,
-  working: 'What are you working on right now?',
-  timing: 'When do you think you will be done with this?',
-  blocking: 'Is there anything blocking your progress on this?',
-  thankyou: 'Alright. Thank you for this update!'
-};
+let toMe,
+  checkin;
 
 function isUser(brackets) {
   return bracketsUser.test(brackets.trim());
@@ -29,11 +31,9 @@ function bracketsToId(brackets) {
   return id;
 }
 
-let check = {},
-  checkInterval;
-
 slack.on('open', () => {
   console.log(`Connected to ${slack.team.name} as ${slack.self.name}`);
+  toMe = new RegExp(`^<@${slack.self.id}>`);
 });
 
 slack.on('error', (err) => {
@@ -41,6 +41,7 @@ slack.on('error', (err) => {
 });
 
 slack.on('message', (message) => {
+  // events
   switch (message.subtype) {
   case 'channel_join':
     if (slack.self.id === message.user) {
@@ -49,31 +50,47 @@ slack.on('message', (message) => {
     }
 
     break;
+  case 'message_changed':
+    handleMessage(Object.assign({}, message, message.message));
+    break;
   case undefined:
-    let toMe = new RegExp(`^<@${slack.self.id}>`);
+    handleMessage(message);
+    break;
+  default:
+    break;
+  }
+});
 
+function handleMessage (message) {
+  let channel = slack.getChannelGroupOrDMByID(message.channel);
+
+  switch ((message.channel || '').substr(0, 1).toUpperCase()) {
+  case 'C':
+    // channel message
     if (toMe.test(message.text)) {
       // commands
-      let cmd = message.text.split(' ').slice(1),
-        channel = slack.getChannelGroupOrDMByID(message.channel);
+      let cmd = message.text.split(' ').slice(1);
 
       switch (cmd[0]) {
       case 'checkin':
-
-        if (check.ts && check.ts > 0) {
-          channel.send(`I'm already doing a checkin. In ${moment.duration((check.ts + pkg.config.waitMinutes * 60 * 1000) - new Date()).humanize()} that will be finished.`);
+        if (checkin) {
+          channel.send(`I'm already doing a checkin. In ${moment.duration((checkin.start + checkin.timeout) - new Date()).humanize()} that will be finished.`);
         } else {
           let inviter = slack.getUserByID(message.user),
             users = cmd.slice(1).filter(isUser).map(bracketsToId);
 
-          check.ts = +(new Date());
-          check.inviter = message.user;
-          check.channel = message.channel;
-          check.users = users;
-          check.responses = {};
-
           if (users.length > 0) {
-            channel.send(`Alright, I'm going to start a checkin.\nI'll report back here when everyone replied or in ${moment.duration(pkg.config.waitMinutes * 60 * 1000).humanize()}, whatever comes first.`);
+            checkin = new Checkin({
+              timeout: pkg.config.waitMinutes * 60 * 1000,
+              inviter: message.user,
+              channel: message.channel,
+              users: users
+            });
+
+            checkin.on('end', finale);
+
+            channel.send(`Alright, I'm going to start a checkin.
+  I'll report back here when everyone replied or in ${moment.duration(checkin.timeout).humanize()}, whatever comes first.`);
 
             users.forEach((id) => {
               slack.openDM(id, (result) => {
@@ -83,18 +100,23 @@ slack.on('message', (message) => {
                 dm.send(`${script.working}`);
               });
             });
-
-            checkInterval = setInterval(() => {
-              if (+(new Date()) > check.ts + (pkg.config.waitMinutes * 60 * 1000)) {
-                finale();
-              }
-            }, 1000);
           }
         }
 
         break;
       case 'stop':
-        stopCheckin();
+        if (checkin) {
+          checkin.stop(true);
+          checkin = null;
+        }
+
+        break;
+      case 'status':
+        if (checkin) {
+          channel.send(`I'm doing a checkin. In ${moment.duration((checkin.start + checkin.timeout) - new Date()).humanize()} that will be finished.`);
+        } else {
+          channel.send(`I'm not doing anything.`);
+        }
 
         break;
       case 'help':
@@ -110,78 +132,66 @@ slack.on('message', (message) => {
 
         break;
       }
-    } else if (message.channel.substr(0, 1) === 'D') {
-      let dm = slack.getChannelGroupOrDMByID(message.channel);
+    }
 
-      check.responses[message.user] = check.responses[message.user] || {};
+    break;
+  case 'D':
+    // direct message
+    if (checkin && (message.user in checkin.responses)) {
+      let response = checkin.responses[message.user];
 
-      if (!check.responses[message.user].working) {
-        check.responses[message.user].working = message.text;
-
-        dm.send(`${script.timing}`);
-      } else if (!check.responses[message.user].timing) {
-        check.responses[message.user].timing = message.text;
-
-        dm.send(`${script.blocking}`);
-      } else if (!check.responses[message.user].blocking) {
-        check.responses[message.user].blocking = message.text;
-
-        dm.send(script.thankyou);
-
-        if (check.users.filter(user => !check.responses[user]).length <= 0) {
-          finale();
-        }
+      if (!('working' in response)) {
+        checkin.addResponse('working', message.user, message.text);
+        channel.send(`${script.timing}`);
+      } else if (!('timing' in response)) {
+        checkin.addResponse('timing', message.user, message.text);
+        channel.send(`${script.blocking}`);
+      } else if (!('blocking' in response)) {
+        checkin.addResponse('blocking', message.user, message.text);
+        channel.send(script.thankyou);
       }
     }
 
     break;
-  default:
-    break;
-  }
-});
-
-function stopCheckin() {
-  if (check.ts && check.ts > 0) {
-    clearInterval(checkInterval);
-    check = {};
   }
 }
 
 function finale () {
-  let channel = slack.getChannelGroupOrDMByID(check.channel);
+  let channel = slack.getChannelGroupOrDMByID(checkin.channel);
 
   let listResult = (title, responses) => `>>>*${title}*\n${responses.join('\n')}`,
-    inviter = slack.getUserByID(check.inviter);
+    inviter = slack.getUserByID(checkin.inviter);
 
   channel.send(`@${inviter.name}, I'm done with the checkin:`);
 
-  let res = {
+  let result = Object.keys(checkin.responses).reduce((result, id) => {
+    let user = slack.getUserByID(id),
+      response = checkin.responses[id];
+
+    if (response.working) {
+      result.working.push(`@${user.name}: ${response.working}`);
+    }
+
+    if (response.timing) {
+      result.timing.push(`@${user.name}: ${response.timing}`);
+    }
+
+    if (response.blocking) {
+      result.blocking.push(`@${user.name}: ${response.blocking}`);
+    }
+
+    return result;
+  }, {
     working: [],
     timing: [],
     blocking: []
-  };
-
-  check.users.forEach((id) => {
-    let user = slack.getUserByID(id);
-
-    if (check.responses[id].working) {
-      res.working.push(`@${user.name}: ${check.responses[id].working}`);
-    }
-
-    if (check.responses[id].timing) {
-      res.timing.push(`@${user.name}: ${check.responses[id].timing}`);
-    }
-
-    if (check.responses[id].blocking) {
-      res.blocking.push(`@${user.name}: ${check.responses[id].blocking}`);
-    }
   });
 
-  channel.send(listResult(script.working, res.working));
-  channel.send(listResult(script.timing, res.timing));
-  channel.send(listResult(script.blocking, res.blocking));
+  channel.send(listResult(script.working, result.working));
+  channel.send(listResult(script.timing, result.timing));
+  channel.send(listResult(script.blocking, result.blocking));
 
-  stopCheckin();
+  checkin = null;
 }
 
 slack.logger.debug = debug;

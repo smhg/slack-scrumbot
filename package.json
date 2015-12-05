@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "A Slack bot that performs a pre-standup checkin.",
   "config": {
-    "waitMinutes": 10
+    "waitMinutes": 2
   },
   "main": "index.js",
   "scripts": {
