@@ -8,14 +8,21 @@ $ npm install
 ```
 
 ## Usage
+Add a bot in Slack's **Integrations** panel. Copy the token.
 #### Start bot
 ```bash
-$ SCRUMBOT_TOKEN=... npm start
+$ SCRUMBOT_TOKEN=your_slack_token npm start
 ```
-Invite the bot to a channel with `/invite [botname]`.
+Invite the bot to a channel:
+```
+/invite botname
+```
 
 #### Start a checkin
-Write `@[botname]: checkin @[username] @[username]` in a channel the bot is in.
+Write a message to the bot:
+```
+@botname: checkin @username1 @username2 @username3
+```
 
 #### Stop bot
 ```bash
@@ -24,5 +31,5 @@ $ npm stop
 
 ## Development
 ```bash
-$ DEBUG=slack-scrumbot SCRUMBOT_TOKEN=... npm run watch
+$ DEBUG=slack-scrumbot SCRUMBOT_TOKEN=your_slack_token npm run watch
 ```
