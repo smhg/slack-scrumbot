@@ -1,10 +1,10 @@
 'use strict';
 
 import Slack from 'slack-client';
-import pkg from './package.json';
+import pkg from '../package.json';
 import moment from 'moment';
 import Debug from 'debug';
-import Checkin from './src/checkin';
+import Checkin from './checkin';
 
 let debug = Debug(pkg.name);
 
@@ -43,6 +43,7 @@ slack.on('error', (err) => {
 slack.on('message', (message) => {
   // events
   switch (message.subtype) {
+  case 'group_join':
   case 'channel_join':
     if (slack.self.id === message.user) {
       let channel = slack.getChannelGroupOrDMByID(message.channel);
@@ -65,6 +66,8 @@ function handleMessage (message) {
   let channel = slack.getChannelGroupOrDMByID(message.channel);
 
   switch ((message.channel || '').substr(0, 1).toUpperCase()) {
+  case 'G':
+    // group (private channel) message
   case 'C':
     // channel message
     if (toMe.test(message.text)) {
@@ -79,7 +82,9 @@ function handleMessage (message) {
           let inviter = slack.getUserByID(message.user),
             users = cmd.slice(1).filter(isUser).map(bracketsToId);
 
-          if (users.length > 0) {
+          if (users.length <= 0) {
+            channel.send(`Please give me some people to do a checkin with.`);
+          } else {
             checkin = new Checkin({
               timeout: pkg.config.waitMinutes * 60 * 1000,
               inviter: message.user,
@@ -90,7 +95,7 @@ function handleMessage (message) {
             checkin.on('end', finale);
 
             channel.send(`Alright, I'm going to start a checkin.
-  I'll report back here when everyone replied or in ${moment.duration(checkin.timeout).humanize()}, whatever comes first.`);
+I'll report back here when everyone replied or in ${moment.duration(checkin.timeout).humanize()}, whatever comes first.`);
 
             users.forEach((id) => {
               slack.openDM(id, (result) => {

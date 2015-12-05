@@ -3,13 +3,13 @@
   "version": "0.1.0",
   "description": "A Slack bot that performs a pre-standup checkin.",
   "config": {
-    "waitMinutes": 2
+    "waitMinutes": 10
   },
-  "main": "index.js",
+  "main": "bot.js",
   "scripts": {
-    "start": "forever start -c babel-node index.js",
-    "stop": "forever stop index.js",
-    "watch": "nodemon --exec babel-node -- index.js"
+    "start": "forever start bot.js",
+    "stop": "forever stop bot.js",
+    "watch": "nodemon bot.js"
   },
   "repository": {
     "type": "git",
@@ -19,10 +19,11 @@
   "license": "MIT",
   "dependencies": {
     "babel-cli": "6.2.0",
+    "babel-core": "6.3.13",
     "babel-preset-es2015": "6.1.18",
-    "debug": "^2.2.0",
+    "debug": "2.2.0",
     "forever": "0.15.1",
-    "moment": "^2.10.6",
+    "moment": "2.10.6",
     "slack-client": "1.5.0"
   },
   "devDependencies": {
