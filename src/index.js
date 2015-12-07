@@ -32,12 +32,12 @@ function bracketsToId(brackets) {
 }
 
 slack.on('open', () => {
-  console.log(`Connected to ${slack.team.name} as ${slack.self.name}`);
+  debug(`Connected to ${slack.team.name} as ${slack.self.name}`);
   toMe = new RegExp(`^<@${slack.self.id}>`);
 });
 
 slack.on('error', (err) => {
-  console.log(`Error ${err}`);
+  console.error(`Error ${err}`);
 });
 
 slack.on('message', (message) => {
@@ -101,8 +101,12 @@ I'll report back here when everyone replied or in ${moment.duration(checkin.time
               slack.openDM(id, (result) => {
                 let dm = slack.getChannelGroupOrDMByID(result.channel.id);
 
-                dm.send(script.greeting(inviter.name));
-                dm.send(`${script.working}`);
+                if (!dm) {
+                  console.error(`Could not retrieve DM channel for user '${result.channel.id}'.`);
+                } else {
+                  dm.send(script.greeting(inviter.name));
+                  dm.send(`${script.working}`);
+                }
               });
             });
           }

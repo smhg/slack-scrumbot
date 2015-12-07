@@ -1,6 +1,6 @@
 {
   "name": "slack-scrumbot",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A Slack bot that performs a pre-standup checkin.",
   "config": {
     "waitMinutes": 10
