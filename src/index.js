@@ -117,6 +117,10 @@ I'll report back here when everyone replied or in ${moment.duration(checkin.time
         if (checkin) {
           checkin.stop(true);
           checkin = null;
+
+          channel.send(`Alright. Those answers are going to /dev/null.`);
+        } else {
+          channel.send(`I can't stop doing nothing.`);
         }
 
         break;
@@ -137,7 +141,7 @@ I'll report back here when everyone replied or in ${moment.duration(checkin.time
 
         break;
       default:
-        channel.send(`I learned English from a book.`);
+        channel.send(`I learnt English from a book.`);
 
         break;
       }
