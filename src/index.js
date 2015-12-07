@@ -207,5 +207,4 @@ function finale () {
   checkin = null;
 }
 
-slack.logger.debug = debug;
 slack.login();
