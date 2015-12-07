@@ -77,7 +77,7 @@ function handleMessage (message) {
       switch (cmd[0]) {
       case 'checkin':
         if (checkin) {
-          channel.send(`I'm already doing a checkin. In ${moment.duration((checkin.start + checkin.timeout) - new Date()).humanize()} that will be finished.`);
+          channel.send(`I'm already doing a checkin. It will be finished in ${moment.duration((checkin.start + checkin.timeout) - new Date()).humanize()} minutes.`);
         } else {
           let inviter = slack.getUserByID(message.user),
             users = cmd.slice(1).filter(isUser).map(bracketsToId);
@@ -126,7 +126,7 @@ I'll report back here when everyone replied or in ${moment.duration(checkin.time
         break;
       case 'status':
         if (checkin) {
-          channel.send(`I'm doing a checkin. In ${moment.duration((checkin.start + checkin.timeout) - new Date()).humanize()} that will be finished.`);
+          channel.send(`I'm doing a checkin. It will be finished in ${moment.duration((checkin.start + checkin.timeout) - new Date()).humanize()} minutes.`);
         } else {
           channel.send(`I'm not doing anything.`);
         }
