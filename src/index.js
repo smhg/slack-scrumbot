@@ -8,10 +8,11 @@ import Checkin from './checkin';
 
 let debug = Debug(pkg.name);
 
-const bracketsUser = /^<@(.+)>$/,
+const hasBrackets = /^<(.+)>$/,
   slackToken = process.env.SCRUMBOT_TOKEN,
   script = {
-    greeting: inviter => `Hi! @${inviter} wanted me to checkin with you.\n_Please provide a short (*one-line*) answer to each question._`,
+    greeting: inviter => `Hi! @${inviter} wanted me to checkin with you.
+_Please provide a short (*one-line*) answer to each question._`,
     working: 'What are you working on right now?',
     timing: 'When do you think you will be done with this?',
     blocking: 'Is there anything blocking your progress on this?',
@@ -22,12 +23,8 @@ const bracketsUser = /^<@(.+)>$/,
 let toMe,
   checkin;
 
-function isUser(brackets) {
-  return bracketsUser.test(brackets.trim());
-}
-
-function bracketsToId(brackets) {
-  let [, id] = brackets.trim().match(bracketsUser);
+function bracketsToId(str) {
+  let [, id] = str.trim().match(hasBrackets);
   return id;
 }
 
@@ -47,7 +44,8 @@ slack.on('message', (message) => {
   case 'channel_join':
     if (slack.self.id === message.user) {
       let channel = slack.getChannelGroupOrDMByID(message.channel);
-      channel.send(`Hi folks, @${slack.self.name} is here to help run pre-standup checkins.\nSay *@${slack.self.name} checkin* to get started.`);
+      channel.send(`Hi folks, @${slack.self.name} is here to help run pre-standup checkins.
+Say *@${slack.self.name} checkin* to get started.`);
     }
 
     break;
@@ -80,16 +78,37 @@ function handleMessage (message) {
           channel.send(`I'm already doing a checkin. It will be finished in ${moment.duration((checkin.start + checkin.timeout) - new Date()).humanize()} minutes.`);
         } else {
           let inviter = slack.getUserByID(message.user),
-            users = cmd.slice(1).filter(isUser).map(bracketsToId);
+            users = cmd.slice(1).reduce((users, id) => {
+              id = id.trim();
 
-          if (users.length <= 0) {
+              if (hasBrackets.test(id)) {
+                let prefix = id.substr(1, 1);
+                id = id.substr(2, id.length - 3);
+
+                switch (prefix) {
+                case '@':
+                  users.add(id);
+                  break;
+                case '!':
+                  if (id === 'channel') {
+                    channel.members.forEach(user => users.add(user));
+                  }
+                }
+              }
+
+              return users;
+            }, new Set());
+
+          users.delete(slack.self.id);
+
+          if (users.size <= 0) {
             channel.send(`Please give me some people to do a checkin with.`);
           } else {
             checkin = new Checkin({
               timeout: pkg.config.waitMinutes * 60 * 1000,
               inviter: message.user,
               channel: message.channel,
-              users: users
+              users: Array.from(users)
             });
 
             checkin.on('end', finale);
