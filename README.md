@@ -3,8 +3,7 @@
 
 ## Installation
 ```bash
-$ git clone git@github.com:smhg/slack-scrumbot.git
-$ npm install
+$ npm install slack-scrumbot
 ```
 
 ## Usage
@@ -19,9 +18,13 @@ Invite the bot to a channel:
 ```
 
 #### Start a checkin
-Write a message to the bot:
+Write a message to the bot listing the users to do a checkin with:
 ```
 @botname: checkin @username1 @username2 @username3
+```
+Or write a message to the channel to do a checkin with everyone:
+```
+@botname: checkin @channel
 ```
 
 #### Stop bot
