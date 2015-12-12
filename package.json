@@ -15,6 +15,12 @@
     "type": "git",
     "url": "https://github.com/smhg/slack-scrumbot.git"
   },
+  "keywords": [
+    "slack",
+    "bot",
+    "scrum",
+    "standup"
+  ],
   "author": "Sam Hauglustaine",
   "license": "MIT",
   "dependencies": {
