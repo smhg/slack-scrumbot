@@ -58,4 +58,8 @@ export default class Checkin extends EventEmitter {
 
     return this;
   }
+
+  getWaitingFor() {
+    return Object.keys(this.responses).filter((user) => {return !('blocking' in this.responses[user]);});
+  }
 }

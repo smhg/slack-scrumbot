@@ -145,7 +145,25 @@ I'll report back here when everyone replied or in ${moment.duration(checkin.time
         break;
       case 'status':
         if (checkin) {
-          channel.send(`I'm doing a checkin. It will be finished in ${moment.duration((checkin.start + checkin.timeout) - new Date()).humanize()}.`);
+          channel.send(`I'm doing a checkin.
+I'm still waiting on ${checkin.getWaitingFor().reduce((result, id, idx, all) => {
+  let user = slack.getUserByID(id);
+
+  if (user) {
+    if (result) {
+      if (idx === all.length - 1) {
+        result = `${result} and @${user.name}`;
+      } else {
+        result = `${result}, @${user.name}`;
+      }
+    } else {
+      result = `@${user.name}`;
+    }
+  }
+
+  return result;
+}, '')}.
+It will be finished in ${moment.duration((checkin.start + checkin.timeout) - new Date()).humanize()}.`);
         } else {
           channel.send(`I'm not doing anything.`);
         }
