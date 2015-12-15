@@ -145,7 +145,7 @@ I'll report back here when everyone replied or in ${moment.duration(checkin.time
         break;
       case 'status':
         if (checkin) {
-          channel.send(`I'm doing a checkin. It will be finished in ${moment.duration((checkin.start + checkin.timeout) - new Date()).humanize()} minutes.`);
+          channel.send(`I'm doing a checkin. It will be finished in ${moment.duration((checkin.start + checkin.timeout) - new Date()).humanize()}.`);
         } else {
           channel.send(`I'm not doing anything.`);
         }
