@@ -145,8 +145,10 @@ I'll report back here when everyone replied or in ${moment.duration(checkin.time
         break;
       case 'status':
         if (checkin) {
+          let waitingUsers = checkin.getWaitingFor();
+
           channel.send(`I'm doing a checkin.
-I'm still waiting on ${checkin.getWaitingFor().reduce((result, id, idx, all) => {
+${waitingUsers.reduce((result, id, idx, all) => {
   let user = slack.getUserByID(id);
 
   if (user) {
@@ -162,15 +164,16 @@ I'm still waiting on ${checkin.getWaitingFor().reduce((result, id, idx, all) => 
   }
 
   return result;
-}, '')}.
-It will be finished in ${moment.duration((checkin.start + checkin.timeout) - new Date()).humanize()}.`);
+}, '')} still {$waitingUsers.length === 1 ? 'has' : 'have'} to answer.
+I will wait ${moment.duration((checkin.start + checkin.timeout) - new Date()).asMinutes()} more minutes.`);
         } else {
           channel.send(`I'm not doing anything.`);
         }
 
         break;
       case 'help':
-        channel.send(`There is only a _limited_ set of problems I can help you with.`);
+        channel.send(`There is only a _limited_ set of problems I can help you with.
+That would currently be \`checkin\`, \`stop\`, \`status\` and \`version\`.`);
 
         break;
       case 'version':
