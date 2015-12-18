@@ -164,8 +164,8 @@ ${waitingUsers.reduce((result, id, idx, all) => {
   }
 
   return result;
-}, '')} still {$waitingUsers.length === 1 ? 'has' : 'have'} to answer.
-I will wait ${moment.duration((checkin.start + checkin.timeout) - new Date()).asMinutes()} more minutes.`);
+}, '')} still ${waitingUsers.length === 1 ? 'has' : 'have'} to answer.
+I will wait ${moment.duration((checkin.start + checkin.timeout) - new Date()).minutes()} more minutes.`);
         } else {
           channel.send(`I'm not doing anything.`);
         }
